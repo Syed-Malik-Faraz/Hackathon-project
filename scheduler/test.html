@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Timetable Scheduler</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 30px;
+      background: #f9f9f9;
+    }
+ 
+    h1 {
+      text-align: center;
+    }
+ 
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+ 
+    textarea {
+      width: 100%;
+      min-height: 200px;
+      padding: 10px;
+      margin-bottom: 10px;
+      font-family: monospace;
+    }
+ 
+    button {
+      background: #007bff;
+      color: white;
+      padding: 10px 15px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+ 
+    button:hover {
+      background: #0056b3;
+    }
+ 
+    pre {
+      background: #222;
+      color: #0f0;
+      padding: 15px;
+      border-radius: 8px;
+      overflow-x: auto;
+      max-height: 400px;
+    }
+ 
+    .error {
+      color: red;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Smart Timetable Scheduler</h1>
+    <p>Enter timetable input JSON and click "Generate Timetable".</p>
+ 
+    <textarea id="inputData">{
+  "faculties": [
+    { "name": "John", "subjects": ["Math", "Physics"] },
+    { "name": "Sarah", "subjects": ["English", "History"] },
+    { "name": "Mike", "subjects": ["Chemistry", "Biology"] }
+  ],
+  "classes": [
+    { "name": "Class A", "subjects": ["Math", "English", "Chemistry"] },
+    { "name": "Class B", "subjects": ["Physics", "History", "Biology"] }
+  ],
+  "constraints": {
+    "periods_per_day": 6,
+    "days": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
+    "sessions_per_subject_per_week": 5
+  }
+}
+</textarea>
+ 
+    <br>
+    <button onclick="generateTimetable()">Generate Timetable</button>
+    <p id="error" class="error"></p>
+    <h2>Output:</h2>
+    <pre id="output"></pre>
+  </div>
+ 
+  <script>
+    async function generateTimetable() {
+      const input = document.getElementById('inputData').value;
+      const output = document.getElementById('output');
+      const error = document.getElementById('error');
+ 
+      // Reset output and errors
+      output.textContent = '';
+      error.textContent = '';
+ 
+      // Validate JSON
+      let jsonData;
+      try {
+        jsonData = JSON.parse(input);
+      } catch (e) {
+        error.textContent = 'Invalid JSON input. Please fix and try again.';
+        return;
+      }
+ 
+      // 🔹 This is where you add the new try...catch block
+      try {
+        const response = await fetch('http://127.0.0.1:8000/generate_timetable', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(jsonData)
+        });
+ 
+        if (!response.ok) {
+          const errorMsg = await response.text();
+          throw new Error(`HTTP ${response.status}: ${errorMsg}`);
+        }
+ 
+        const result = await response.json();
+        output.textContent = JSON.stringify(result, null, 2);
+ 
+      } catch (err) {
+        console.error("Request failed:", err);
+        error.textContent = err.message;
+      }
+    }
+  </script>
+</body>
+</html>
+ 
+ 
