@@ -6,6 +6,15 @@ const FacultyDashboard = () => {
   // Timetable
   const [timetable, setTimetable] = useState({});
 
+
+  //notes
+  const [notes, setNotes] = useState([]);
+  const [noteTitle, setNoteTitle] = useState("");
+const [noteDescription, setNoteDescription] = useState("");
+const [noteFile, setNoteFile] = useState(null);
+const [notesMessage, setNotesMessage] = useState("");
+
+
   // Announcements
   const [announcements, setAnnouncements] = useState([]);
   const [announcementForm, setAnnouncementForm] = useState({ title: "", message: "" });
@@ -21,8 +30,9 @@ const FacultyDashboard = () => {
   const [message, setMessage] = useState("");
 
   // --- FETCH DATA ---
-  useEffect(() => {
-    fetch("http://localhost:8000/student/timetable")
+useEffect(() => {
+-    fetch("http://localhost:8000/student/timetable")
++    fetch("http://localhost:8000/timetable")
       .then(res => res.json())
       .then(data => setTimetable(data || {}))
       .catch(err => console.error(err));
@@ -41,6 +51,14 @@ const FacultyDashboard = () => {
       .then(res => res.json())
       .then(data => setStudentsList(data || []))
       .catch(err => console.error(err));
+
+      //for notes
+fetch("http://localhost:8000/student/notes")
+  .then(res => res.json())
+  .then(data => setNotes(data || []))
+  .catch(err => console.error(err));
+
+
   }, []);
 
   // --- ANNOUNCEMENTS ---
@@ -69,29 +87,115 @@ const FacultyDashboard = () => {
     }
   };
 
-  // --- ATTENDANCE ---
-  const handleAttendanceChange = (studentId, present) => {
-    setAttendance(prev => ({ ...prev, [studentId]: present }));
-  };
 
-  const submitAttendance = async course => {
-    const presentStudents = Object.entries(attendance)
-      .filter(([_, present]) => present)
-      .map(([id]) => id);
+const sendNote = async () => {
+  if (!noteTitle || !noteFile) {
+    setNotesMessage("Title and file are required");
+    return;
+  }
 
-    try {
-      const res = await fetch("http://localhost:8000/attendance", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ course, date: new Date().toISOString(), presentStudents }),
-      });
-      const data = await res.json();
-      setMessage(res.ok ? `Attendance recorded for ${course}` : data.error || "Error");
-    } catch (err) {
-      console.error(err);
-      setMessage("Server error");
+  const formData = new FormData();
+  formData.append("title", noteTitle);
+  formData.append("description", noteDescription);
+  formData.append("postedBy", "FacultyName"); // Replace with actual teacher name
+  formData.append("file", noteFile);
+
+  try {
+    const res = await fetch("http://localhost:8000/teacher/notes", {
+      method: "POST",
+      body: formData,
+    });
+
+    const data = await res.json();
+    if (res.ok) {
+      setNotesMessage("Note sent successfully!");
+      setNoteTitle("");
+      setNoteDescription("");
+      setNoteFile(null);
+    } else {
+      setNotesMessage(data.error || "Error sending note");
     }
-  };
+  } catch (err) {
+    console.error(err);
+    setNotesMessage("Server error");
+  }
+};
+
+// const markAttendance = async (studentId, status) => {
+//   await fetch('http://localhost:8000/attendance', {
+//     method: 'POST',
+//     headers: { 'Content-Type': 'application/json' },
+//     body: JSON.stringify({
+//       studentId,
+//       date: new Date(),
+//       status // present or absent
+//     })
+//   });
+//   // Optionally update UI or show toast
+// };
+
+
+
+//   // --- ATTENDANCE ---
+//   const handleAttendanceChange = (studentId, present) => {
+//     setAttendance(prev => ({ ...prev, [studentId]: present }));
+//   };
+
+//   const submitAttendance = async course => {
+//     const presentStudents = Object.entries(attendance)
+//       .filter(([_, present]) => present)
+//       .map(([id]) => id);
+
+//     try {
+//       const res = await fetch("http://localhost:8000/attendance", {
+//         method: "POST",
+//         headers: { "Content-Type": "application/json" },
+//         body: JSON.stringify({ course, date: new Date().toISOString(), presentStudents }),
+//       });
+//       const data = await res.json();
+//       setMessage(res.ok ? `Attendance recorded for ${course}` : data.error || "Error");
+//     } catch (err) {
+//       console.error(err);
+//       setMessage("Server error");
+//     }
+//   };
+
+// --- ATTENDANCE ---
+// Store attendance as a map: studentId -> true (present) / false (absent)
+const handleAttendanceChange = (studentId, present) => {
+  setAttendance(prev => ({ ...prev, [studentId]: present }));
+};
+
+const submitAttendance = async (course) => {
+  const presentStudents = Object.entries(attendance)
+    .filter(([_, present]) => present)
+    .map(([id]) => id); // this should match student usernames or IDs
+
+  if (!course) {
+    setMessage("Please provide a course name.");
+    return;
+  }
+
+  try {
+    const res = await fetch("http://localhost:8000/attendance", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        course,
+        date: new Date().toISOString().split("T")[0], // YYYY-MM-DD
+        presentStudents
+      }),
+    });
+    const data = await res.json();
+    setMessage(res.ok ? `Attendance recorded for ${course}` : data.error || "Error recording attendance");
+  } catch (err) {
+    console.error(err);
+    setMessage("Server error");
+  }
+};
+
+
+
 
   // --- ASSIGNMENTS ---
   const handleAssignmentChange = e => {
@@ -181,31 +285,81 @@ const FacultyDashboard = () => {
               </div>
             ))}
           </div>
-        );
-
-      case "attendance":
-        return (
-          <div>
-            <h2 className="text-xl font-bold mb-2">Mark Attendance</h2>
-            {studentsList.length === 0 ? <p>No students available.</p> : (
+        );case "attendance":
+  return (
+    <div>
+      <h2 className="text-xl font-bold mb-2">Mark Attendance</h2>
+      {studentsList.length === 0 ? (
+        <p>No students available.</p>
+      ) : (
+        <div>
+          {studentsList.map(student => (
+            <div key={student.username} className="flex items-center justify-between p-2 border-b">
+              <span>{student.name}</span>
               <div>
-                {studentsList.map(s => (
-                  <div key={s.username}>
-                    <input
-                      type="checkbox"
-                      checked={attendance[s.username] || false}
-                      onChange={e => handleAttendanceChange(s.username, e.target.checked)}
-                    />
-                    <span className="ml-2">{s.name} ({s.username})</span>
-                  </div>
-                ))}
-                <button onClick={() => submitAttendance("General Course")} className="mt-2 px-4 py-2 bg-blue-600 text-white rounded">
-                  Submit Attendance
+                <button
+                  onClick={() => handleAttendanceChange(student.username, true)}
+                  className={`px-2 py-1 rounded mr-2 ${attendance[student.username] ? "bg-green-500 text-white" : "bg-gray-300"}`}
+                >
+                  Present
+                </button>
+                <button
+                  onClick={() => handleAttendanceChange(student.username, false)}
+                  className={`px-2 py-1 rounded ${attendance[student.username] === false ? "bg-red-500 text-white" : "bg-gray-300"}`}
+                >
+                  Absent
                 </button>
               </div>
-            )}
-          </div>
-        );
+            </div>
+          ))}
+          <button
+            onClick={() => submitAttendance("Math")} // Replace "Math" with dynamic course if needed
+            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded"
+          >
+            Submit Attendance
+          </button>
+        </div>
+      )}
+    </div>
+  );
+
+          
+        case "notes":
+  return (
+    <div>
+      <h2 className="text-xl font-bold mb-2">Send Notes to Students</h2>
+
+      <div className="mb-4 border p-3 rounded">
+        <input
+          type="text"
+          placeholder="Note Title"
+          value={noteTitle}
+          onChange={(e) => setNoteTitle(e.target.value)}
+          className="mb-2 w-full p-2 border rounded"
+        />
+        <textarea
+          placeholder="Note Description"
+          value={noteDescription}
+          onChange={(e) => setNoteDescription(e.target.value)}
+          className="mb-2 w-full p-2 border rounded"
+        />
+        <input
+          type="file"
+          onChange={(e) => setNoteFile(e.target.files[0])}
+          className="mb-2"
+        />
+        <button
+          onClick={sendNote}
+          className="px-3 py-1 bg-blue-600 text-white rounded"
+        >
+          Send Note
+        </button>
+        {notesMessage && <p className="text-green-600 mt-2">{notesMessage}</p>}
+      </div>
+    </div>
+  );
+
+
 
       case "assignments":
         return (
@@ -261,6 +415,8 @@ const FacultyDashboard = () => {
     { key: "announcements", label: "Announcements" },
     { key: "attendance", label: "Attendance" },
     { key: "assignments", label: "Assignments" },
+    { key: "notes", label: "Notes" }
+
   ];
 
   return (

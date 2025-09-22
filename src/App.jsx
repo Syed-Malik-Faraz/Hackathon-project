@@ -49,3 +49,24 @@ function App() {
 }
 
 export default App;
+
+
+
+
+
+
+// http://localhost:8000/add-student  to post on the postman on the post 
+
+// {  for student 
+//   "name": "Faraz",
+//   "email": "faraz@example.com",
+//   "username": "s1",
+//   "password": "1234"
+// }
+
+// {  for the teacher 
+//   "name": "Mr. Khan",
+//   "email": "khan@example.com",
+//   "username": "t1",
+//   "password": "abcd"
+// }

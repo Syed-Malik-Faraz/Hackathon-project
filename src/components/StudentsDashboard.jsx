@@ -11,29 +11,79 @@ const StudentsDashboard = () => {
   const [message, setMessage] = useState("");
 
   const studentId = "s1"; // Update dynamically in real app
+  // const studentId = "student1"; // must match backend username
+
+// const [studentId, setStudentId] = useState(""); // empty initially
+
+// After login:
+// setStudentId(loggedInUser.username);
+
+//notes 
+const [notes, setNotes] = useState([]);
+
+
+// attendanceRecords.push({
+//   course: "General Course",
+//   date: "2025-09-22",
+//   presentStudents: ["student1"], // must match studentId
+// });
+
 
   // --- FETCH DATA ---
-  useEffect(() => {
-    fetch("http://localhost:8000/student/timetable")
-      .then(res => res.json())
-      .then(data => setTimetable(data.timetable || data))
-      .catch(err => console.error(err));
+  // 1️⃣ useEffect for timetable, announcements, assignments, notes
 
-    fetch("http://localhost:8000/student/announcements")
-      .then(res => res.json())
-      .then(data => setAnnouncements(data || []))
-      .catch(err => console.error(err));
+useEffect(() => {
+  fetch("http://localhost:8000/student/timetable")
+    .then(res => res.json())
+    .then(data => setTimetable(data.timetable || data))
+    .catch(err => console.error(err));
 
-    fetch("http://localhost:8000/student/attendance")
-      .then(res => res.json())
-      .then(data => setAttendance(data || []))
-      .catch(err => console.error(err));
+  fetch("http://localhost:8000/student/announcements")
+    .then(res => res.json())
+    .then(data => setAnnouncements(data || []))
+    .catch(err => console.error(err));
 
-    fetch("http://localhost:8000/student/assignments")
-      .then(res => res.json())
-      .then(data => setAssignments(data || []))
-      .catch(err => console.error(err));
-  }, []);
+  fetch("http://localhost:8000/student/assignments")
+    .then(res => res.json())
+    .then(data => setAssignments(data || []))
+    .catch(err => console.error(err));
+
+  // for notes
+  fetch("http://localhost:8000/student/notes")
+    .then(res => res.json())
+    .then(data => setNotes(data || []))
+    .catch(err => console.error(err));
+}, []);
+
+// // 2️⃣ separate useEffect for attendance
+// useEffect(() => {
+//   fetch(`http://localhost:8000/student/attendance?studentId=${studentId}`)
+//     .then(res => res.json())
+//     .then(data => setAttendance(data))
+//     .catch(err => console.error(err));
+// }, [studentId]);
+
+
+
+// attendance.map(record => (
+//   <div key={record._id}>
+//     {new Date(record.date).toLocaleDateString()} - 
+//     <span className={record.status === 'present' ? 'text-green-600' : 'text-red-600'}>
+//       {record.status}
+//     </span>
+//   </div>
+// ))
+
+
+// const totalDays = attendance.length;
+// const presentDays = attendance.filter(a => a.status === 'present').length;
+// const absentDays = totalDays - presentDays;
+
+// const attendancePercentage = (presentDays / totalDays) * 100;
+
+
+
+
 
   // --- ASSIGNMENT SUBMISSION ---
   const handleFileChange = (assignmentId, file) => {
@@ -109,21 +159,77 @@ const StudentsDashboard = () => {
               </div>
             ))}
           </div>
-        );
+        )
+        ;
+        
 
-      case "attendance":
-        return (
-          <div>
-            <h2 className="text-xl font-bold mb-2">Attendance</h2>
-            <ul>
-              {attendance.map(a => (
-                <li key={a.course}>
-                  {a.course}: {a.present}/{a.total} ({a.percent}%)
-                </li>
-              ))}
-            </ul>
+
+        case "attendance":
+  return (
+    <div>
+      <h2 className="text-xl font-bold mb-2">Attendance</h2>
+
+      {Array.isArray(attendance) && attendance.length === 0 ? (
+        <p>No attendance records available.</p>
+      ) : (
+        <ul>
+          {attendance.map((a, idx) => {
+            // parse percent as float just in case it's a string
+            const present = Number(a.present) || 0;
+            const total = Number(a.total) || 0;
+            const percent = total > 0 ? Math.round((present / total) * 100) : 0;
+
+            return (
+              <li key={idx} className="mb-2">
+                <div className="flex justify-between items-center">
+                  <span>
+                    {a.course || "General Course"}: {present}/{total} ({percent}%)
+                  </span>
+
+                  <div className="w-1/3 bg-gray-300 h-2 rounded ml-2">
+                    <div
+                      className={`${percent < 50 ? "bg-red-500" : "bg-blue-600"} h-2 rounded`}
+                      style={{ width: `${percent}%` }}
+                    ></div>
+                  </div>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+
+
+  case "notes":
+  return (
+    <div>
+      <h2 className="text-xl font-bold mb-2">Notes</h2>
+      {notes.length === 0 ? (
+        <p>No notes available.</p>
+      ) : (
+        notes.map(n => (
+          <div key={n.id} className="border p-2 mb-2 rounded">
+            <h4>{n.title}</h4>
+            <p>{n.description}</p>
+            {n.file && (
+              <a
+                href={`http://localhost:8000/${n.file}`}
+                target="_blank"
+                rel="noreferrer"
+                className="text-blue-600 underline"
+              >
+                Download
+              </a>
+            )}
+            <p>Posted by: {n.postedBy}</p>
+            <p>Date: {new Date(n.date).toLocaleString()}</p>
           </div>
-        );
+        ))
+      )}
+    </div>
+  );
 
       case "assignments":
         return (
@@ -171,6 +277,8 @@ const StudentsDashboard = () => {
     { key: "announcements", label: "Announcements" },
     { key: "attendance", label: "Attendance" },
     { key: "assignments", label: "Assignments" },
+    { key: "notes", label: "Notes" }
+
   ];
 
   return (
